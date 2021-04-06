@@ -1,0 +1,126 @@
+Week1 Reproducible Research Practices with R Markdown
+Khine Mimi Khin
+1 March 2021
+R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see http://rmarkdown.rstudio.com.
+
+When you click the Knit button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Including Plots
+
+Note that the echo = FALSE parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```
+#list the excel sheet names
+excel_sheets("./data/surveys_data.xlsx")
+```
+## [1] "surveys"      "plot_info"    "species_info"
+
+#load the excel data
+survey_data <- read_excel("./data/surveys_data.xlsx", sheet=1)
+
+#load into plot
+plot_info <- read_excel("./data/surveys_data.xlsx", sheet=2)
+
+#load species info
+species_info <- read_excel("./data/surveys_data.xlsx", sheet=3)
+
+#check the data structure
+str(survey_data)
+
+## tibble [35,549 x 10] (S3: tbl_df/tbl/data.frame)
+##  $ record_id      : num [1:35549] 1 2 3 4 5 6 7 8 9 10 ...
+##  $ month          : num [1:35549] 7 7 7 7 7 7 7 7 7 7 ...
+##  $ day            : num [1:35549] 16 16 16 16 16 16 16 16 16 16 ...
+##  $ year           : num [1:35549] 1977 1977 1977 1977 1977 ...
+##  $ plot_id        : num [1:35549] 2 3 2 7 3 1 2 1 1 6 ...
+##  $ species_id     : chr [1:35549] "NL" "NL" "DM" "DM" ...
+##  $ sex            : chr [1:35549] "M" "M" "F" "M" ...
+##  $ hindfoot_length: num [1:35549] 32 33 37 36 35 14 NA 37 34 20 ...
+##  $ weight         : num [1:35549] NA NA NA NA NA NA NA NA NA NA ...
+##  $ date           : POSIXct[1:35549], format: "1977-07-16" "1977-07-16" ...
+
+#recode sex as numeric
+survey_data$sex <- ifelse(survey_data$sex=="M", 0,1)
+
+#recode sex and set value labels
+survey_data$sex <- factor(survey_data$sex, levels=c(0,1), labels=c("Male", "Female"))
+
+#explore the data structure
+str(plot_info)
+
+## tibble [24 x 2] (S3: tbl_df/tbl/data.frame)
+##  $ plot_id  : num [1:24] 1 2 3 4 5 6 7 8 9 10 ...
+##  $ plot_type: chr [1:24] "Spectab exclosure" "Control" "Long-term Krat Exclosure" "Control" ...
+
+#label the plot_id according to the plot_type in the plot_info dataset
+survey_data$plot_id <- factor(survey_data$plot_id, levels=plot_info$plot_id, labels=plot_info$plot_type)
+
+#check the data structure
+str(species_info)
+
+## tibble [54 x 4] (S3: tbl_df/tbl/data.frame)
+##  $ species_id: chr [1:54] "AB" "AH" "AS" "BA" ...
+##  $ genus     : chr [1:54] "Amphispiza" "Ammospermophilus" "Ammodramus" "Baiomys" ...
+##  $ species   : chr [1:54] "bilineata" "harrisi" "savannarum" "taylori" ...
+##  $ taxa      : chr [1:54] "Bird" "Rodent" "Bird" "Rodent" ...
+
+#merge the genus and species variables into one column, space added between genus & species
+species_info$species_lab <-paste(species_info$genus, species_info$species, " ")
+
+#check the first 10 rows
+head(species_info[1:10,])
+
+## # A tibble: 6 x 5
+##   species_id genus          species        taxa   species_lab                   
+##   <chr>      <chr>          <chr>          <chr>  <chr>                         
+## 1 AB         Amphispiza     bilineata      Bird   "Amphispiza bilineata  "      
+## 2 AH         Ammospermophi~ harrisi        Rodent "Ammospermophilus harrisi  "  
+## 3 AS         Ammodramus     savannarum     Bird   "Ammodramus savannarum  "     
+## 4 BA         Baiomys        taylori        Rodent "Baiomys taylori  "           
+## 5 CB         Campylorhynch~ brunneicapill~ Bird   "Campylorhynchus brunneicapil~
+## 6 CM         Calamospiza    melanocorys    Bird   "Calamospiza melanocorys  "
+
+#remove the lagging space
+species_info$species_lab <- trimws(species_info$species_lab, which = "right")
+
+#check first 10 rows
+head(species_info[1:10,])
+
+## # A tibble: 6 x 5
+##   species_id genus           species         taxa  species_lab                  
+##   <chr>      <chr>           <chr>           <chr> <chr>                        
+## 1 AB         Amphispiza      bilineata       Bird  Amphispiza bilineata         
+## 2 AH         Ammospermophil~ harrisi         Rode~ Ammospermophilus harrisi     
+## 3 AS         Ammodramus      savannarum      Bird  Ammodramus savannarum        
+## 4 BA         Baiomys         taylori         Rode~ Baiomys taylori              
+## 5 CB         Campylorhynchus brunneicapillus Bird  Campylorhynchus brunneicapil~
+## 6 CM         Calamospiza     melanocorys     Bird  Calamospiza melanocorys
+
+#add labels to species id values in survey data
+survey_data$species_id <- factor(survey_data$species_id,levels = species_info$species_id, labels = species_info$species_lab)
+
+#add genus and taxa
+survey_data <- merge(survey_data, species_info[,c(2,4,5)], by.x="species_id", by.y = "species_lab")
+
+#check the main data
+str(survey_data)
+
+## 'data.frame':    34786 obs. of  12 variables:
+##  $ species_id     : Factor w/ 54 levels "Amphispiza bilineata",..: 3 3 2 2 2 2 2 2 2 2 ...
+##  $ record_id      : num  18932 20588 27074 12824 22059 ...
+##  $ month          : num  8 1 10 5 2 4 5 10 10 12 ...
+##  $ day            : num  7 24 26 28 4 21 15 24 25 14 ...
+##  $ year           : num  1991 1993 1997 1987 1995 ...
+##  $ plot_id        : Factor w/ 5 levels "Spectab exclosure",..: 3 2 2 5 2 1 4 3 5 4 ...
+##  $ sex            : Factor w/ 2 levels "Male","Female": NA NA NA NA NA NA NA NA NA NA ...
+##  $ hindfoot_length: num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ weight         : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date           : POSIXct, format: "1991-08-07" "1993-01-24" ...
+##  $ genus          : chr  "Ammodramus" "Ammodramus" "Ammospermophilus" "Ammospermophilus" ...
+##  $ taxa           : chr  "Bird" "Bird" "Rodent" "Rodent" ...
+
+ggplot(survey_data, aes(x=year)) + geom_histogram(aes(y = ..density..), bin=50, color = "grey30", fill = "blue") + geom_density(alpha=.2, fill = "antiquewhite3")+theme_bw()
+
+  
+
+
